@@ -14,5 +14,11 @@ data/
 client_secret*
 token.json
 
+# Google Takeout exports (personal data)
+takeout*.zip
+Takeout/
+watch-history.*
+*.Zone.Identifier
+
 # docit working notes (process exhaust)
 .docit-notes/
