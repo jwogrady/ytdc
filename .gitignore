@@ -13,3 +13,9 @@ wheels/
 data/
 client_secret.json
 token.json
+
+#secret
+client_secret*
+
+# docit working notes (process exhaust)
+.docit-notes/
