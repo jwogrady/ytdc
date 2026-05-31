@@ -11,11 +11,8 @@ wheels/
 
 # ytdc personal data and secrets
 data/
-client_secret.json
-token.json
-
-#secret
 client_secret*
+token.json
 
 # docit working notes (process exhaust)
 .docit-notes/
