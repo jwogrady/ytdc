@@ -7,6 +7,7 @@ later commands can reuse it without prompting again.
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 from google.auth.exceptions import RefreshError
@@ -60,8 +61,8 @@ def _load_cached_token(token_file: Path) -> Credentials | None:
         return None
     try:
         return Credentials.from_authorized_user_file(str(token_file), SCOPES)
-    except ValueError:
-        # Malformed token file (bad JSON or missing fields): re-authenticate.
+    except (ValueError, OSError):
+        # Malformed (bad JSON / missing fields) or unreadable cache: re-authenticate.
         return None
 
 
@@ -79,7 +80,11 @@ def _run_consent_flow(client_secret_file: Path) -> Credentials:
 def _save_token(token_file: Path, creds: Credentials) -> None:
     """Persist credentials with owner-only permissions (token is a secret)."""
     token_file.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
-    token_file.write_text(creds.to_json())
+    # Create at 0600 from the start so there is no world-readable window between
+    # writing and chmod; chmod too, in case the file already existed looser.
+    fd = os.open(token_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as handle:
+        handle.write(creds.to_json())
     token_file.chmod(0o600)
 
 
