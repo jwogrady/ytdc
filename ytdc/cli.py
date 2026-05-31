@@ -9,7 +9,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from ytdc import auth, execute, likes, report, subs
+from ytdc import auth, errors, execute, likes, report, subs
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -82,7 +82,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     try:
         return args.func(args)
-    except (FileNotFoundError, auth.AuthError) as exc:
+    except (FileNotFoundError, auth.AuthError, errors.InputError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 
