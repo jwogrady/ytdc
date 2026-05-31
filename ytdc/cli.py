@@ -8,7 +8,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from ytdc import auth, subs
+from ytdc import auth, likes, subs
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -28,6 +28,11 @@ def build_parser() -> argparse.ArgumentParser:
         "fetch-subs", help="Back up live subscriptions to data/subscriptions.json."
     )
     fetch_subs_parser.set_defaults(func=subs.cmd_fetch_subs)
+
+    fetch_likes_parser = subparsers.add_parser(
+        "fetch-likes", help="Back up liked videos to data/likes.json."
+    )
+    fetch_likes_parser.set_defaults(func=likes.cmd_fetch_likes)
 
     return parser
 
