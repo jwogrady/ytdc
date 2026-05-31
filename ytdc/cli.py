@@ -9,7 +9,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from ytdc import auth, likes, report, subs
+from ytdc import auth, execute, likes, report, subs
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -46,6 +46,29 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to the Takeout watch-history.json export.",
     )
     analyze_parser.set_defaults(func=report.cmd_analyze)
+
+    execute_parser = subparsers.add_parser(
+        "execute",
+        help="Apply an approved plan (dry-run unless --execute is passed).",
+    )
+    execute_parser.add_argument(
+        "--plan",
+        type=Path,
+        default=execute.PLAN_FILE,
+        help="Path to the approved plan.json (default: data/plan.json).",
+    )
+    execute_parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Actually perform removals (default: dry-run, no API changes).",
+    )
+    execute_parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Max removals to perform this run (quota guard).",
+    )
+    execute_parser.set_defaults(func=execute.cmd_execute)
 
     return parser
 
