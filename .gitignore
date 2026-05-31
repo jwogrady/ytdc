@@ -8,3 +8,8 @@ wheels/
 
 # Virtual environments
 .venv
+
+# ytdc personal data and secrets
+data/
+client_secret.json
+token.json

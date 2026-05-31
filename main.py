@@ -1,6 +1,6 @@
-def main():
-    print("Hello from ytdc!")
+"""Thin entry point delegating to the ytdc CLI."""
 
+from ytdc.cli import main
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
