@@ -12,6 +12,7 @@ from pathlib import Path
 from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 
 # Removing subscriptions and clearing likes both require the force-ssl scope.
@@ -19,6 +20,10 @@ SCOPES = ["https://www.googleapis.com/auth/youtube.force-ssl"]
 
 CLIENT_SECRET_FILE = Path("client_secret.json")
 TOKEN_FILE = Path("data/token.json")
+
+
+class AuthError(Exception):
+    """Raised when usable credentials are unavailable for a non-interactive command."""
 
 
 def get_credentials(
@@ -76,6 +81,46 @@ def _save_token(token_file: Path, creds: Credentials) -> None:
     token_file.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
     token_file.write_text(creds.to_json())
     token_file.chmod(0o600)
+
+
+def load_existing_credentials(token_file: Path = TOKEN_FILE) -> Credentials:
+    """Return cached credentials without launching the consent flow.
+
+    For non-interactive commands (fetch, execute) that must not pop a browser.
+    Raises :class:`AuthError` when the user has not run ``ytdc auth`` yet, or
+    the cached token is unusable and cannot be refreshed.
+    """
+    creds = _load_cached_token(token_file)
+    if creds is None:
+        raise AuthError(
+            f"Not authenticated: {token_file} is missing or invalid. "
+            "Run `ytdc auth` first."
+        )
+    if creds.valid:
+        return creds
+    if creds.expired and creds.refresh_token:
+        try:
+            creds.refresh(Request())
+        except RefreshError as exc:
+            raise AuthError(
+                "Cached credentials expired and could not be refreshed. "
+                "Run `ytdc auth` again."
+            ) from exc
+        _save_token(token_file, creds)
+        return creds
+    raise AuthError(
+        f"Cached credentials at {token_file} are unusable. Run `ytdc auth` again."
+    )
+
+
+def build_youtube_service(creds: Credentials | None = None):
+    """Build an authenticated YouTube Data API v3 client.
+
+    Loads cached credentials when none are supplied.
+    """
+    if creds is None:
+        creds = load_existing_credentials()
+    return build("youtube", "v3", credentials=creds)
 
 
 def cmd_auth(args: argparse.Namespace) -> int:

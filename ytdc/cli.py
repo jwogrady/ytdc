@@ -8,7 +8,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from ytdc import auth
+from ytdc import auth, subs
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -24,6 +24,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     auth_parser.set_defaults(func=auth.cmd_auth)
 
+    fetch_subs_parser = subparsers.add_parser(
+        "fetch-subs", help="Back up live subscriptions to data/subscriptions.json."
+    )
+    fetch_subs_parser.set_defaults(func=subs.cmd_fetch_subs)
+
     return parser
 
 
@@ -36,7 +41,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     try:
         return args.func(args)
-    except FileNotFoundError as exc:
+    except (FileNotFoundError, auth.AuthError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 
