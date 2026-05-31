@@ -79,10 +79,11 @@ credential.
 
 1. Go to [takeout.google.com](https://takeout.google.com).
 2. Click **Deselect all**, then select only **YouTube and YouTube Music**.
-3. Under that entry, narrow the data to **history**, and switch the format to
-   **JSON** (not HTML).
-4. Download the export, unzip it, and find `watch-history.json`. Note its path —
-   you'll pass it to `analyze`.
+3. Under that entry, narrow the data to **history**. Either export format works —
+   `analyze` accepts both the default **HTML** (`watch-history.html`) and **JSON**
+   (`watch-history.json`), so you can leave the format as-is.
+4. Download the export, unzip it, and find `watch-history.html` (or
+   `watch-history.json`). Note its path — you'll pass it to `analyze`.
 
 This is required because the API can't return watch history; Takeout is the only
 source.
