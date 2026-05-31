@@ -12,6 +12,7 @@ import argparse
 import json
 from pathlib import Path
 
+from ytdc.errors import InputError
 from ytdc.history import parse_watch_history
 from ytdc.likes import LIKES_FILE
 from ytdc.subs import SUBSCRIPTIONS_FILE
@@ -20,14 +21,23 @@ ANALYSIS_FILE = Path("data/analysis.json")
 
 
 def _read_json_list(path: Path) -> list[dict]:
-    """Read a JSON array from a backup file, with a clear error if absent."""
+    """Read a JSON array from a backup file, with clear errors on bad input."""
     if not path.exists():
         raise FileNotFoundError(f"Missing {path}. Run the matching fetch command first.")
-    return json.loads(path.read_text())
+    try:
+        data = json.loads(path.read_text())
+    except json.JSONDecodeError as exc:
+        raise InputError(f"{path} is not valid JSON: {exc}") from exc
+    if not isinstance(data, list):
+        raise InputError(f"{path} should contain a JSON array.")
+    return data
 
 
-def _annotate(record: dict, stat: dict | None) -> dict:
+def _annotate(record: dict, channels: dict[str, dict], source: Path) -> dict:
     """Attach watch stats (or zeroed defaults) to a subscription or like."""
+    if not isinstance(record, dict) or "channel_id" not in record:
+        raise InputError(f"{source} contains a record without a 'channel_id'.")
+    stat = channels.get(record["channel_id"])
     return {
         **record,
         "views": stat["views"] if stat else 0,
@@ -48,8 +58,8 @@ def build_analysis(
     likes = _read_json_list(likes_file)
 
     return {
-        "subscriptions": [_annotate(s, channels.get(s["channel_id"])) for s in subs],
-        "likes": [_annotate(lk, channels.get(lk["channel_id"])) for lk in likes],
+        "subscriptions": [_annotate(s, channels, subscriptions_file) for s in subs],
+        "likes": [_annotate(lk, channels, likes_file) for lk in likes],
         "unattributable": unattributable,
     }
 

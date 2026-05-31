@@ -12,6 +12,8 @@ import json
 import re
 from pathlib import Path
 
+from ytdc.errors import InputError
+
 # Channel IDs always start with "UC" followed by URL-safe base64 characters.
 _CHANNEL_URL_RE = re.compile(r"/channel/(UC[\w-]+)")
 
@@ -22,12 +24,26 @@ def parse_watch_history(path: Path) -> tuple[dict[str, dict], int]:
     ``channels`` maps each ``channel_id`` to
     ``{"name", "views", "first_watched", "last_watched"}``. Timestamps are the
     raw ISO-8601 strings from Takeout, which sort chronologically as text.
+
+    Raises :class:`InputError` if the file is not valid JSON or is not the
+    expected top-level array (e.g. ``--history`` pointed at the wrong file).
     """
-    entries = json.loads(Path(path).read_text())
+    try:
+        entries = json.loads(Path(path).read_text())
+    except json.JSONDecodeError as exc:
+        raise InputError(f"{path} is not valid JSON: {exc}") from exc
+    if not isinstance(entries, list):
+        raise InputError(
+            f"{path} is not a Takeout watch-history export (expected a JSON array)."
+        )
+
     channels: dict[str, dict] = {}
     unattributable = 0
 
     for entry in entries:
+        if not isinstance(entry, dict):
+            unattributable += 1
+            continue
         subtitles = entry.get("subtitles")
         if not subtitles:
             unattributable += 1
