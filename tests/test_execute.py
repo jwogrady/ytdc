@@ -155,6 +155,122 @@ def test_execute_dedupes_plan(tmp_path, monkeypatch):
     assert fake._videos.rated == [("v1", "none")]  # rated once, not twice
 
 
+def _http_error(status, reason=None, message="boom"):
+    import httplib2
+    from googleapiclient.errors import HttpError
+
+    body = {"error": {"message": message}}
+    if reason is not None:
+        body["error"]["errors"] = [{"reason": reason}]
+    return HttpError(httplib2.Response({"status": status}), json.dumps(body).encode())
+
+
+def test_last_run_recorded_on_full_run(tmp_path, monkeypatch):
+    plan = _write_plan(tmp_path, [], ["v1", "v2"])
+    log = tmp_path / "log.json"
+    monkeypatch.setattr(ex, "EXECUTE_LOG_FILE", log)
+    fake = _FakeYouTube([])
+    monkeypatch.setattr(ex, "build_youtube_service", lambda *_a, **_k: fake)
+
+    ex.cmd_execute(_args(plan, execute=True))
+
+    last = json.loads(log.read_text())["last_run"]
+    assert last["stopped_reason"] == "completed"
+    assert last["unliked_this_run"] == 2
+    assert last["pending_unlike"] == 0
+    assert last["errors"] == []
+    assert last["finished_at"]  # timestamp present
+
+
+def test_quota_error_short_circuits_and_is_recorded(tmp_path, monkeypatch, capsys):
+    plan = _write_plan(tmp_path, [], ["v1", "v2", "v3"])
+    log = tmp_path / "log.json"
+    monkeypatch.setattr(ex, "EXECUTE_LOG_FILE", log)
+    fake = _FakeYouTube([])
+    calls: list[str] = []
+
+    def rate(id, rating):  # noqa: A002 - mirrors the API kwarg name
+        calls.append(id)
+        if id == "v2":
+            raise _http_error(403, reason="quotaExceeded", message="quota gone")
+        return _Req({})
+
+    fake._videos.rate = rate
+    monkeypatch.setattr(ex, "build_youtube_service", lambda *_a, **_k: fake)
+
+    ex.cmd_execute(_args(plan, execute=True))
+
+    assert calls == ["v1", "v2"]  # v3 never attempted — quota stop short-circuits
+    saved = json.loads(log.read_text())
+    assert saved["unliked"] == ["v1"]  # v2 failed, not logged
+    last = saved["last_run"]
+    assert last["stopped_reason"] == "quota"
+    assert last["pending_unlike"] == 2  # v2 + v3 remain
+    assert last["errors"][0] == {
+        "id": "v2",
+        "action": "unlike",
+        "status": 403,
+        "reason": "quotaExceeded",
+        "message": "quota gone",
+    }
+    assert "quota exhausted" in capsys.readouterr().out
+
+
+def test_non_quota_error_continues_and_records(tmp_path, monkeypatch):
+    plan = _write_plan(tmp_path, [], ["v1", "v2"])
+    log = tmp_path / "log.json"
+    monkeypatch.setattr(ex, "EXECUTE_LOG_FILE", log)
+    fake = _FakeYouTube([])
+    calls: list[str] = []
+
+    def rate(id, rating):  # noqa: A002 - mirrors the API kwarg name
+        calls.append(id)
+        if id == "v1":
+            raise _http_error(404, reason="videoNotFound", message="gone")
+        return _Req({})
+
+    fake._videos.rate = rate
+    monkeypatch.setattr(ex, "build_youtube_service", lambda *_a, **_k: fake)
+
+    ex.cmd_execute(_args(plan, execute=True))
+
+    assert calls == ["v1", "v2"]  # transient/other errors don't stop the run
+    last = json.loads(log.read_text())["last_run"]
+    assert last["stopped_reason"] == "errors"
+    assert last["errors"][0]["reason"] == "videoNotFound"
+
+
+def test_dry_run_reports_last_run_summary(tmp_path, monkeypatch, capsys):
+    plan = _write_plan(tmp_path, [], ["v1"])
+    log = tmp_path / "log.json"
+    log.write_text(
+        json.dumps(
+            {
+                "unsubscribed": [],
+                "unliked": [],
+                "last_run": {
+                    "finished_at": "2026-06-02T10:05:00+00:00",
+                    "stopped_reason": "quota",
+                    "unsubscribed_this_run": 468,
+                    "unliked_this_run": 0,
+                    "pending_unsubscribe": 374,
+                    "pending_unlike": 0,
+                    "errors": [{"id": "UCx", "action": "unsubscribe"}],
+                },
+            }
+        )
+    )
+    monkeypatch.setattr(ex, "EXECUTE_LOG_FILE", log)
+
+    ex.cmd_execute(_args(plan))  # dry-run
+
+    out = capsys.readouterr().out
+    assert "Last execute run (2026-06-02T10:05:00+00:00)" in out
+    assert "468 unsubscribed" in out
+    assert "stopped=quota" in out
+    assert "1 error(s)" in out
+
+
 def test_execute_resumes_remaining_after_limit(tmp_path, monkeypatch):
     plan = _write_plan(tmp_path, [], ["v1", "v2"])
     log = tmp_path / "log.json"
