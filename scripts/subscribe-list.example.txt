@@ -1,0 +1,13 @@
+# Example subscribe list — copy to data/subscribe-list.txt and edit.
+# One channel @handle per line (the leading @ is optional).
+# Lines starting with # and blank lines are ignored.
+#
+# Run:
+#   uv run python scripts/subscribe.py              # dry run (default)
+#   uv run python scripts/subscribe.py --execute    # actually subscribe
+
+AndrejKarpathy
+Fireship
+ThePrimeagen
+AcquiredFM
+ycombinator
