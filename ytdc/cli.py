@@ -9,7 +9,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from ytdc import auth, errors, execute, likes, report, subs
+from ytdc import auth, errors, execute, likes, report, subs, subscribe
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -69,6 +69,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="Max removals to perform this run (quota guard).",
     )
     execute_parser.set_defaults(func=execute.cmd_execute)
+
+    subscribe_parser = subparsers.add_parser(
+        "subscribe",
+        help="Subscribe to channels listed by @handle (dry-run unless --execute).",
+    )
+    subscribe_parser.add_argument(
+        "--list",
+        type=Path,
+        default=subscribe.SUBSCRIBE_LIST_FILE,
+        help="File of channel @handles, one per line "
+        "(default: data/subscribe-list.txt).",
+    )
+    subscribe_parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Actually subscribe (default: dry-run, no API changes).",
+    )
+    subscribe_parser.set_defaults(func=subscribe.cmd_subscribe)
 
     return parser
 

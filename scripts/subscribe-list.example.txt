@@ -3,8 +3,8 @@
 # Lines starting with # and blank lines are ignored.
 #
 # Run:
-#   uv run python scripts/subscribe.py              # dry run (default)
-#   uv run python scripts/subscribe.py --execute    # actually subscribe
+#   uv run ytdc subscribe --list data/subscribe-list.txt              # dry run (default)
+#   uv run ytdc subscribe --list data/subscribe-list.txt --execute    # actually subscribe
 
 AndrejKarpathy
 Fireship

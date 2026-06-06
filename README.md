@@ -68,7 +68,7 @@ uv run ytdc --help
 ```
 
 You should see the subcommands: `auth`, `fetch-subs`, `fetch-likes`, `analyze`,
-`execute`.
+`execute`, `subscribe`.
 
 ## One-time external setup
 
@@ -123,6 +123,7 @@ write a plan, and execute it.
 | Analyze | `uv run ytdc analyze --history <path>` | Joins backups against history → `data/analysis.json` |
 | Preview | `uv run ytdc execute --plan data/plan.json` | Dry-run; zero API calls |
 | Apply | `uv run ytdc execute --plan data/plan.json --execute` | Performs the removals |
+| Subscribe | `uv run ytdc subscribe --list data/subscribe-list.txt --execute` | Subscribe to channels by `@handle` |
 
 ### 1. Authenticate (once)
 
@@ -200,6 +201,22 @@ uv run ytdc execute --plan data/plan.json --execute --limit 50
 
 The run stops after 50 successful removals; re-run later to continue, and it skips
 anything already done.
+
+### 6. Rebuild subscriptions (optional)
+
+`execute` only prunes. To go the other way — restore subscriptions or act on a
+curated list of channels — use `subscribe`. List one channel `@handle` per line
+in `data/subscribe-list.txt` (copy `scripts/subscribe-list.example.txt` to start),
+then:
+
+```bash
+uv run ytdc subscribe --list data/subscribe-list.txt              # dry-run: lists handles, zero API calls
+uv run ytdc subscribe --list data/subscribe-list.txt --execute    # resolve handles and subscribe
+```
+
+It resolves each handle to a channel, **skips any you're already subscribed to**,
+and reports handles that don't resolve. It's idempotent — a re-run only subscribes
+to what's still missing, so a quota-limited run resumes safely the next day.
 
 ### Safety properties
 
