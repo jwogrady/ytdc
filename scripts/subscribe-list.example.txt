@@ -1,0 +1,13 @@
+# Example subscribe list — copy to data/subscribe-list.txt and edit.
+# One channel @handle per line (the leading @ is optional).
+# Lines starting with # and blank lines are ignored.
+#
+# Run:
+#   uv run ytdc subscribe --list data/subscribe-list.txt              # dry run (default)
+#   uv run ytdc subscribe --list data/subscribe-list.txt --execute    # actually subscribe
+
+AndrejKarpathy
+Fireship
+ThePrimeagen
+AcquiredFM
+ycombinator
